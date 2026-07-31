@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+/* Zero out border-radius globally for a completely boxy aesthetic */
+* { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+  border-radius: 0 !important; 
+}
+
+/* Base Theme Variables */
+:root {
+  --bg: #2b2b2b;
+  --bg-panel: #222222;
+  --bg-app: #262626;
+  --text-muted: #a1a1a1;
+  --text-primary: #e0e0e0;
+  --text-accent: #00ff66;
+  --text-danger: #ff5555;
+  --bg-danger: #3a0000;
+  --border: #444444;
+  --font-mono: 'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace;
+}
+
+/* Amber CRT Preset */
+body[data-theme="amber"] {
+  --bg: #120a00;
+  --bg-panel: #1c1000;
+  --bg-app: #170d00;
+  --text-muted: #805800;
+  --text-primary: #ffb000;
+  --text-accent: #ffe066;
+  --text-danger: #ff3333;
+  --bg-danger: #4a0000;
+  --border: #4d3300;
+}
+
+/* Terminal Green Preset */
+body[data-theme="green"] {
+  --bg: #041204;
+  --bg-panel: #0a1f0a;
+  --bg-app: #071707;
+  --text-muted: #2d662d;
+  --text-primary: #00ff66;
+  --text-accent: #80ffaa;
+  --text-danger: #ff3333;
+  --bg-danger: #3a0000;
+  --border: #144d14;
+}
+
+/* Page container layout */
+body {
+  background-color: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#app {
+  width: 100%;
+  max-width: 900px;
+  padding: 2rem;
+  border: 1px solid var(--border);
+  background: var(--bg-app);
+}
+
+/* Header bar styling */
+#header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+#title { font-size: 14px; color: var(--text-muted); letter-spacing: 0.1em; }
+
+/* Boxy header stat modules */
+#stats { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.stat { 
+  text-align: center; 
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  padding: 6px 12px;
+  min-width: 60px;
+}
+.stat-val { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+.stat-lbl { font-size: 10px; color: var(--text-muted); letter-spacing: 0.08em; }
+
+/* Interactive header buttons */
+.stat-interactive {
+  cursor: pointer;
+  user-select: none;
+}
+.stat-interactive:hover {
+  border-color: var(--text-accent);
+}
+.stat-interactive:hover .stat-val {
+  color: var(--text-accent);
+}
+
+/* Explicit Editable Timer Underline & Cue */
+#timer-btn .stat-val {
+  text-decoration: underline dotted var(--text-muted);
+  text-underline-offset: 4px;
+}
+#timer-btn:hover .stat-val {
+  text-decoration: underline solid var(--text-accent);
+  color: var(--text-accent);
+}
+.edit-icon {
+  font-size: 11px;
+  opacity: 0.6;
+  margin-left: 2px;
+}
+
+/* Help badge icon for STRICT info */
+.help-badge {
+  font-size: 11px;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  padding: 0 4px;
+  display: inline-block;
+  margin-left: 2px;
+  vertical-align: middle;
+  cursor: help;
+}
+.help-badge:hover {
+  color: var(--text-accent);
+  border-color: var(--text-accent);
+}
+
+/* Boxed typing prompt container */
+#prompt-area {
+  font-size: 20px;
+  line-height: 1.8;
+  letter-spacing: 0.05em;
+  margin-bottom: 1.5rem;
+  width: 100%;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  white-space: pre-wrap;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+/* Character states */
+.ch { color: var(--text-muted); }
+.ch.correct { color: var(--text-primary); }
+.ch.wrong { color: var(--text-danger); background: var(--bg-danger); }
+.ch.cursor { border-left: 2px solid var(--text-accent); animation: blink 1s step-end infinite; }
+@keyframes blink { 50% { border-left-color: transparent; } }
+
+/* Controls and status message bar */
+#controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+#msg { font-size: 13px; color: var(--text-muted); letter-spacing: 0.05em; }
+#restart-btn {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+}
+#restart-btn:hover { border-color: var(--text-accent); color: var(--text-accent); }
+
+/* Post-test results display bar */
+#result-bar {
+  display: none;
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  flex-wrap: wrap;
+  gap: 2rem;
+}
+#result-bar.show { display: flex; }
+.res-val { font-size: 24px; font-weight: 600; color: var(--text-primary); }
+.res-lbl { font-size: 10px; color: var(--text-muted); letter-spacing: 0.08em; display: block; }
+.accent { color: var(--text-accent); }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="header">
+    <span id="title">Doge's <i>BasicType</i></span>
+    <div id="stats">
+      <!-- Theme toggle button -->
+      <div class="stat stat-interactive" id="theme-btn" title="Click to cycle display themes">
+        <div class="stat-val" id="theme-live">DEF</div>
+        <div class="stat-lbl">THEME</div>
+      </div>
+      <!-- Strict mode toggle button -->
+      <div class="stat stat-interactive" id="strict-btn" title="Toggle strict mode">
+        <div class="stat-val">
+          <span id="strict-live">OFF</span>
+          <span class="help-badge" title="STRICT MODE: You cannot type ahead on typos. You must press Backspace to fix mistakes before continuing.">?</span>
+        </div>
+        <div class="stat-lbl">STRICT</div>
+      </div>
+      <!-- Caps toggle button -->
+      <div class="stat stat-interactive" id="caps-btn" title="Click to toggle capitalization mode">
+        <div class="stat-val" id="caps-live">OFF</div>
+        <div class="stat-lbl">CAPS</div>
+      </div>
+      <!-- Punctuation toggle button -->
+      <div class="stat stat-interactive" id="punc-btn" title="Click to toggle punctuation mode">
+        <div class="stat-val" id="punc-live">OFF</div>
+        <div class="stat-lbl">PUNC</div>
+      </div>
+      <!-- Numbers toggle button -->
+      <div class="stat stat-interactive" id="num-btn" title="Click to toggle numbers mode">
+        <div class="stat-val" id="num-live">OFF</div>
+        <div class="stat-lbl">NUM</div>
+      </div>
+      <!-- Clickable countdown timer box with dotted underline indicator -->
+      <div class="stat stat-interactive" id="timer-btn" title="Click to edit timer duration">
+        <div class="stat-val"><span id="timer-live">60</span><span class="edit-icon">✎</span></div>
+        <div class="stat-lbl">SEC</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Target text prompt area -->
+  <div id="prompt-area">fetching MIT word list...</div>
+
+  <!-- Bottom controls -->
+  <div id="controls">
+    <span id="msg">loading...</span>
+    <button id="restart-btn">[tab] restart</button>
+  </div>
+
+  <!-- Hidden end-of-test metrics -->
+  <div id="result-bar">
+    <div><span class="res-lbl">WPM</span><span class="res-val accent" id="res-wpm">0</span></div>
+    <div><span class="res-lbl">ACCURACY</span><span class="res-val" id="res-acc">0%</span></div>
+    <div><span class="res-lbl">CORRECT</span><span class="res-val" id="res-correct">0</span></div>
+    <div><span class="res-lbl">ERRORS</span><span class="res-val" id="res-errors">0</span></div>
+  </div>
+</div>
+
+<script>
+// Fallback array in case network fetch fails completely
+let WORDS = "the quick brown fox jumps over the lazy dog able about across after also and any are back been before being between both but came can come could day did down each even every few find first for from get give go good great had has have her here him his how if in into its just know last left life like little look made man many may might more most move much name need never new next not now off often one only open other out over own part people place put read right said same say see she should small some something still such take than that them then there these they think this through time together too try under until upon use very want was way well went what when where which while who will with word world would year you your".split(" ");
+
+// Weighted punctuation array
+const PUNCTUATION_MARKS = [
+  ".", ".", ".", ".",
+  ",", ",", ",", ",",
+  "?", "?", "?",
+  "!", "!", "!",
+  "/",
+  "-"
+];
+
+// Theme configurations
+const THEMES = [
+  { name: "DEF", val: "default" },
+  { name: "AMB", val: "amber" },
+  { name: "GRN", val: "green" }
+];
+
+// State tracking variables
+let duration = 60;
+let includeNumbers = false;
+let includePunctuation = false;
+let includeCaps = false;
+let strictMode = false;
+let themeIndex = 0;
+
+let flat = "", typed = [], started = false, finished = false;
+let timerLeft = duration, timerInterval = null;
+let totalKeystrokes = 0, wrongKeystrokes = 0;
+
+// DOM element references
+const promptEl = document.getElementById("prompt-area");
+const timerEl = document.getElementById("timer-live");
+const timerBtn = document.getElementById("timer-btn");
+const numEl = document.getElementById("num-live");
+const numBtn = document.getElementById("num-btn");
+const puncEl = document.getElementById("punc-live");
+const puncBtn = document.getElementById("punc-btn");
+const capsEl = document.getElementById("caps-live");
+const capsBtn = document.getElementById("caps-btn");
+const strictEl = document.getElementById("strict-live");
+const strictBtn = document.getElementById("strict-btn");
+const themeEl = document.getElementById("theme-live");
+const themeBtn = document.getElementById("theme-btn");
+const msg = document.getElementById("msg");
+const resultBar = document.getElementById("result-bar");
+
+// Fetch MIT 10,000 wordlist with automatic CORS proxy fallback
+async function fetchMitWordlist() {
+  const targetUrl = 'https://www.mit.edu/~ecprice/wordlist.10000';
+  const corsProxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(targetUrl);
+  let rawText = '';
+
+  try {
+    const res = await fetch(targetUrl);
+    if (res.ok) rawText = await res.text();
+  } catch (err) {
+    try {
+      const proxyRes = await fetch(corsProxyUrl);
+      if (proxyRes.ok) rawText = await proxyRes.text();
+    } catch (proxyErr) {
+      console.warn("Could not fetch MIT wordlist. Using internal fallback list.");
+    }
+  }
+
+  if (rawText) {
+    const parsed = rawText.split(/\r?\n/).map(w => w.trim()).filter(w => w.length > 0);
+    if (parsed.length > 0) WORDS = parsed;
+  }
+
+  reset();
+}
+
+// Fisher-Yates array shuffle algorithm
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Assemble random prompt string
+function buildPrompt() {
+  let words = [];
+  while (words.length < 250) words.push(...shuffle(WORDS));
+  words = words.slice(0, 250);
+
+  // Substitute ~18% of words with numbers if enabled
+  if (includeNumbers) {
+    words = words.map(word => {
+      if (Math.random() < 0.18) {
+        const rand = Math.random();
+        if (rand < 0.4) return Math.floor(Math.random() * 100).toString();
+        if (rand < 0.8) return Math.floor(Math.random() * 1000).toString();
+        return (1970 + Math.floor(Math.random() * 60)).toString();
+      }
+      return word;
+    });
+  }
+
+  // Inject punctuation and sentence capitalization if enabled
+  if (includePunctuation) {
+    let capitalizeNext = false;
+    words = words.map((word, i) => {
+      let w = word;
+      if (capitalizeNext && typeof w === 'string' && w.length > 0) {
+        w = w.charAt(0).toUpperCase() + w.slice(1);
+        capitalizeNext = false;
+      }
+      if (Math.random() < 0.22 && i < words.length - 1) {
+        const mark = PUNCTUATION_MARKS[Math.floor(Math.random() * PUNCTUATION_MARKS.length)];
+        w = w + mark;
+        if ([".", "?", "!"].includes(mark)) capitalizeNext = true;
+      }
+      return w;
+    });
+  }
+
+  // Apply CAPS mix if enabled
+  if (includeCaps) {
+    words = words.map(word => {
+      if (typeof word !== 'string' || word.length === 0) return word;
+      const rand = Math.random();
+      if (rand < 0.25) return word.toUpperCase();
+      if (rand < 0.60) return word.charAt(0).toUpperCase() + word.slice(1);
+      return word;
+    });
+  }
+
+  flat = words.join(" ");
+}
+
+// Render individual characters into DOM spans
+function renderPrompt() {
+  const chars = flat.split("");
+  let html = "";
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i];
+    let cls = "ch";
+    if (i < typed.length) cls += typed[i] === ch ? " correct" : " wrong";
+    if (i === typed.length) cls += " cursor";
+    html += `<span class="${cls}">${ch}</span>`;
+  }
+  promptEl.innerHTML = html;
+}
+
+// WPM calculation based on 5 characters per standardized word
+function calcWpm() {
+  const elapsed = (duration - timerLeft) || 1;
+  const correctChars = typed.filter((c, i) => c === flat[i]).length;
+  return Math.round((correctChars / 5) / (elapsed / 60));
+}
+
+// Typing accuracy percentage calculation
+function calcAcc() {
+  if (totalKeystrokes === 0) return 100;
+  return Math.round(((totalKeystrokes - wrongKeystrokes) / totalKeystrokes) * 100);
+}
+
+// Interval countdown loop
+function startTimer() {
+  timerInterval = setInterval(() => {
+    timerLeft--;
+    timerEl.textContent = timerLeft;
+    if (timerLeft <= 0) endTest();
+  }, 1000);
+}
+
+// Finalize test session and show stats
+function endTest() {
+  clearInterval(timerInterval);
+  finished = true;
+  msg.textContent = "test complete — press [tab] to restart";
+  const wpm = calcWpm();
+  const acc = calcAcc();
+  const correct = typed.filter((c, i) => c === flat[i]).length;
+  const errors = typed.filter((c, i) => c !== flat[i]).length;
+  document.getElementById("res-wpm").textContent = wpm;
+  document.getElementById("res-acc").textContent = acc + "%";
+  document.getElementById("res-correct").textContent = correct;
+  document.getElementById("res-errors").textContent = errors;
+  resultBar.classList.add("show");
+}
+
+// Reset session state
+function reset() {
+  clearInterval(timerInterval);
+  started = false; finished = false;
+  timerLeft = duration;
+  typed = []; totalKeystrokes = 0; wrongKeystrokes = 0;
+  timerEl.textContent = duration;
+  msg.textContent = "start typing to begin";
+  resultBar.classList.remove("show");
+  buildPrompt();
+  renderPrompt();
+}
+
+// Theme toggle click handler
+themeBtn.addEventListener("click", () => {
+  themeIndex = (themeIndex + 1) % THEMES.length;
+  const t = THEMES[themeIndex];
+  themeEl.textContent = t.name;
+  document.body.setAttribute("data-theme", t.val);
+});
+
+// Strict mode toggle click handler
+strictBtn.addEventListener("click", (e) => {
+  if (started) return;
+  if (e.target.classList.contains('help-badge')) return;
+  strictMode = !strictMode;
+  strictEl.textContent = strictMode ? "ON" : "OFF";
+  strictEl.style.color = strictMode ? "var(--text-accent)" : "var(--text-primary)";
+  reset();
+});
+
+// Caps toggle click handler
+capsBtn.addEventListener("click", () => {
+  if (started) return;
+  includeCaps = !includeCaps;
+  capsEl.textContent = includeCaps ? "ON" : "OFF";
+  capsEl.style.color = includeCaps ? "var(--text-accent)" : "var(--text-primary)";
+  reset();
+});
+
+// Punctuation toggle button click handler
+puncBtn.addEventListener("click", () => {
+  if (started) return;
+  includePunctuation = !includePunctuation;
+  puncEl.textContent = includePunctuation ? "ON" : "OFF";
+  puncEl.style.color = includePunctuation ? "var(--text-accent)" : "var(--text-primary)";
+  reset();
+});
+
+// Numbers toggle button click handler
+numBtn.addEventListener("click", () => {
+  if (started) return;
+  includeNumbers = !includeNumbers;
+  numEl.textContent = includeNumbers ? "ON" : "OFF";
+  numEl.style.color = includeNumbers ? "var(--text-accent)" : "var(--text-primary)";
+  reset();
+});
+
+// Custom timer duration handler
+timerBtn.addEventListener("click", () => {
+  if (started) return;
+  const val = prompt("Enter custom time in seconds:", duration);
+  if (val !== null) {
+    const parsed = parseInt(val, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      duration = parsed;
+      reset();
+    }
+  }
+});
+
+// Keypress capture and game loop controller
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Tab") {
+    e.preventDefault();
+    reset();
+    return;
+  }
+
+  if (finished) return;
+
+  // Backspace handler
+  if (e.key === "Backspace") {
+    e.preventDefault();
+    if (typed.length > 0) typed.pop();
+    renderPrompt();
+    return;
+  }
+
+  // Filter modifier and special keys
+  if (e.key.length !== 1 || e.ctrlKey || e.altKey || e.metaKey) return;
+
+  // STRICT MODE LOCK
+  if (strictMode && typed.length > 0 && typed[typed.length - 1] !== flat[typed.length - 1]) {
+    e.preventDefault();
+    return;
+  }
+
+  e.preventDefault();
+
+  // Start timer on first valid keypress
+  if (!started) {
+    started = true;
+    startTimer();
+    msg.textContent = "test running…";
+  }
+
+  const expected = flat[typed.length];
+  totalKeystrokes++;
+  if (e.key !== expected) wrongKeystrokes++;
+  typed.push(e.key);
+  renderPrompt();
+
+  if (typed.length >= flat.length) endTest();
+});
+
+// Restart button listener
+document.getElementById("restart-btn").addEventListener("click", reset);
+
+// Load MIT word list on application start
+fetchMitWordlist();
+</script>
+</body>
+</html>
