@@ -1,0 +1,2 @@
+# BasicType
+Simple Typing Test
